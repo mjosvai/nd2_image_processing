@@ -1,0 +1,165 @@
+// ND2 4-Channel Export and Composite Generator
+// Mitchell Josvai, 10/16/25
+// Description: 
+// This macro takes a 4-channel .nd2 MAX projection file and exports:
+//   - Individual channel images as TIFF and JPEG
+//   - Multiple channel composites (RB, GB, BW, RBW, RGB, GBW, RGBW)
+// Each composite includes an automatically sized scale bar based on magnification.
+//
+//   - Run this macro with a 4-channel .nd2 MAX projection open in ImageJ/Fiji
+// ====================================================================
+
+
+// 1. Retrieve filename and directory
+
+path = getTitle();                // Get current image filename (with extension)
+dir = getDirectory(path);         // Get full directory path of the image
+
+
+// 2. Duplicate and save the original as a backup (raw TIFF)
+
+run("Duplicate...", "duplicate"); // Duplicate the open ND2 image
+selectWindow(replace(path, ".nd2", "-1.nd2")); // Switch to duplicate window
+saveAs("Tiff", dir + replace(path, ".nd2", "_MAXRAW.tif")); // Save as TIFF backup
+
+
+// 3. Split stack into individual channel images
+
+selectWindow(path);
+run("Stack to Images"); // Creates individual channel windows (-0001, -0002, etc.)
+
+
+// 4. Determine scale bar size based on objective magnification
+// Adjust width (µm) proportionally to magnification.
+
+if (indexOf(path, "20X") != -1) {
+    sb_width = 250;
+}
+else if (indexOf(path, "40X") != -1) {
+    sb_width = 100;
+}
+else if (indexOf(path, "60X") != -1) {
+    sb_width = 50;
+}
+else if (indexOf(path, "100X") != -1) {
+    sb_width = 25;
+}
+
+// Scale bar parameters relative to image height
+sb_thick = getHeight() * 25 / 512; // Adjust scale bar thickness
+sb_font = getHeight() * 40 / 512;  // Adjust scale bar font size
+
+
+// 5. Export each individual channel as TIFF and JPEG
+// Channel mapping (assumed from ND2 export order):
+//   -0004 = White (W)
+//   -0003 = Red (R)
+//   -0002 = Green (G)
+//   -0001 = Blue (B)
+
+selectWindow(replace(path, ".nd2", "-0004"));
+saveAs("Tiff", dir + replace(path, ".nd2", "_W.tif"));
+saveAs("Jpeg", dir + replace(path, ".nd2", "_W.jpg"));
+
+selectWindow(replace(path, ".nd2", "-0003"));
+saveAs("Tiff", dir + replace(path, ".nd2", "_R.tif"));
+saveAs("Jpeg", dir + replace(path, ".nd2", "_R.jpg"));
+
+selectWindow(replace(path, ".nd2", "-0002"));
+saveAs("Tiff", dir + replace(path, ".nd2", "_G.tif"));
+saveAs("Jpeg", dir + replace(path, ".nd2", "_G.jpg"));
+
+selectWindow(replace(path, ".nd2", "-0001"));
+saveAs("Tiff", dir + replace(path, ".nd2", "_B.tif"));
+saveAs("Jpeg", dir + replace(path, ".nd2", "_B.jpg"));
+
+
+// 6. Generate composite images for channel combinations
+// Adds a scale bar automatically to each merged image.
+
+// --- RB composite ---
+run("Merge Channels...", "c3=" + replace(path, ".nd2", "_B.tif") + 
+                         " c1=" + replace(path, ".nd2", "_R.tif") + 
+                         " create keep ignore");
+run("Scale Bar...", "width=" + sb_width + " height=33 thickness=" + sb_thick + 
+                    " font=" + sb_font + " color=White background=None " + 
+                    "location=[Lower Right] horizontal bold hide overlay");
+saveAs("Tiff", dir + replace(path, ".nd2", "_RB.tif"));
+saveAs("Jpeg", dir + replace(path, ".nd2", "_RB.jpg"));
+
+
+// --- GB composite ---
+run("Merge Channels...", "c2=" + replace(path, ".nd2", "_G.tif") + 
+                         " c3=" + replace(path, ".nd2", "_B.tif") + 
+                         " create keep ignore");
+run("Scale Bar...", "width=" + sb_width + " height=33 thickness=" + sb_thick + 
+                    " font=" + sb_font + " color=White background=None " + 
+                    "location=[Lower Right] horizontal bold hide overlay");
+saveAs("Tiff", dir + replace(path, ".nd2", "_GB.tif"));
+saveAs("Jpeg", dir + replace(path, ".nd2", "_GB.jpg"));
+
+
+// --- BW composite ---
+run("Merge Channels...", "c4=" + replace(path, ".nd2", "_W.tif") + 
+                         " c3=" + replace(path, ".nd2", "_B.tif") + 
+                         " create keep ignore");
+run("Scale Bar...", "width=" + sb_width + " height=33 thickness=" + sb_thick +  
+                    " font=" + sb_font + " color=White background=None " + 
+                    "location=[Lower Right] horizontal bold hide overlay");
+saveAs("Tiff", dir + replace(path, ".nd2", "_BW.tif"));
+saveAs("Jpeg", dir + replace(path, ".nd2", "_BW.jpg"));
+
+
+// --- RBW composite ---
+run("Merge Channels...", "c1=" + replace(path, ".nd2", "_R.tif") + 
+                         " c3=" + replace(path, ".nd2", "_B.tif") + 
+                         " c4=" + replace(path, ".nd2", "_W.tif") + 
+                         " create keep ignore");
+run("Scale Bar...", "width=" + sb_width + " height=33 thickness=" + sb_thick + 
+                    " font=" + sb_font + " color=White background=None " + 
+                    "location=[Lower Right] horizontal bold hide overlay");
+saveAs("Tiff", dir + replace(path, ".nd2", "_RBW.tif"));
+saveAs("Jpeg", dir + replace(path, ".nd2", "_RBW.jpg"));
+
+
+// --- RGB composite ---
+run("Merge Channels...", "c1=" + replace(path, ".nd2", "_R.tif") + 
+                         " c2=" + replace(path, ".nd2", "_G.tif") + 
+                         " c3=" + replace(path, ".nd2", "_B.tif") + 
+                         " create keep ignore");
+run("Scale Bar...", "width=" + sb_width + " height=33 thickness=" + sb_thick + 
+                    " font=" + sb_font + " color=White background=None " + 
+                    "location=[Lower Right] horizontal bold overlay");
+saveAs("Tiff", dir + replace(path, ".nd2", "_RGB.tif"));
+saveAs("Jpeg", dir + replace(path, ".nd2", "_RGB.jpg"));
+
+
+// --- GBW composite ---
+run("Merge Channels...", "c2=" + replace(path, ".nd2", "_G.tif") + 
+                         " c3=" + replace(path, ".nd2", "_B.tif") + 
+                         " c4=" + replace(path, ".nd2", "_W.tif") + 
+                         " create keep ignore");
+run("Scale Bar...", "width=" + sb_width + " height=33 thickness=" + sb_thick +  
+                    " font=" + sb_font + " color=White background=None " + 
+                    "location=[Lower Right] horizontal bold overlay");
+saveAs("Tiff", dir + replace(path, ".nd2", "_GBW.tif"));
+saveAs("Jpeg", dir + replace(path, ".nd2", "_GBW.jpg"));
+
+
+// --- RGBW composite ---
+run("Merge Channels...", "c1=" + replace(path, ".nd2", "_R.tif") + 
+                         " c2=" + replace(path, ".nd2", "_G.tif") + 
+                         " c3=" + replace(path, ".nd2", "_B.tif") + 
+                         " c4=" + replace(path, ".nd2", "_W.tif") + 
+                         " create keep ignore");
+run("Scale Bar...", "width=" + sb_width + " height=33 thickness=" + sb_thick +  
+                    " font=" + sb_font + " color=White background=None " + 
+                    "location=[Lower Right] horizontal bold overlay");
+saveAs("Tiff", dir + replace(path, ".nd2", "_RGBW.tif"));
+saveAs("Jpeg", dir + replace(path, ".nd2", "_RGBW.jpg"));
+
+
+// --------------------------------------------------------------------
+// 7. Close all windows when done
+// run("Close All");
+// --------------------------------------------------------------------
